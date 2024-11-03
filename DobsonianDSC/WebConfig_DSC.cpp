@@ -33,6 +33,7 @@
 #endif
 #include <ArduinoJson.h>
 #include <FS.h>
+#include <WiFi.h>
 
 const char * inputtypes[] = {"text","password","number","date","time","range","check","radio","select","color","float"};
 
@@ -166,7 +167,7 @@ void WebConfig::addDescription(String parameter){
         if (obj.containsKey("name")) strlcpy(_description[_count].name,obj["name"],NAMELENGTH);
         if (obj.containsKey("label"))strlcpy(_description[_count].label,obj["label"],LABELLENGTH);
         if (obj.containsKey("type")) {
-          if (obj["type"].is<char *>()) {
+          if (obj["type"].is<String>()) {  //obj["type"].is<char *>()
             uint8_t t = 0;
             strlcpy(tmp,obj["type"],30);
             while ((t<INPUTTYPES) && (strcmp(tmp,inputtypes[t])!=0)) t++;

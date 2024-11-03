@@ -67,6 +67,20 @@ ESP32Encoder ALTencoder;
 #define PIN_ALT_A 25
 #define PIN_ALT_B 26
 
+//beeper for signalling
+#define PIN_BEEPER 33
+#define NOTE_C 261
+#define NOTE_D 293
+#define NOTE_E 329
+#define NOTE_F 349
+#define NOTE_G 392
+#define NOTE_A 440
+#define NOTE_B 493
+
+const int melodyStart[] = {NOTE_C, NOTE_E, NOTE_G};
+const int melodyError[] = {NOTE_A, NOTE_A, NOTE_A, NOTE_C};
+const int melodySetupCompleted[] = {NOTE_C, NOTE_C, NOTE_A, NOTE_A};
+
 BluetoothSerial SerialBT;
 
 String params = "["
@@ -197,7 +211,7 @@ void handleRoot() {
 void setupEncoders()
 {
   // It's very important to enable pull up resistors in order to work with the NPN open collector outputs:
-  ESP32Encoder::useInternalWeakPullResistors = UP;
+  ESP32Encoder::useInternalWeakPullResistors = puType::up;
 
   // flip the pins used by Altitude encoder if the web configuration says so:
   if (conf.getBool("flpalt"))
@@ -305,12 +319,22 @@ void attendBTRequests()   // handle connections from SkySafari and similar softw
   }
 }
 
+void playMelody(const int melody[]){
+  for(int i=0; i<sizeof(melody); i++){
+     tone(PIN_BEEPER, melody[i], 250);
+  }
+
+}
+
 /**
  * Arduino main setup method
  */
 void setup() {
+  pinMode(PIN_BEEPER, OUTPUT);
   Serial.begin(115200);
   Serial.println(params);
+  playMelody(melodyStart);
+
   conf.setDescription(params);
   conf.readConfig();
   initWiFi();
@@ -332,6 +356,8 @@ void setup() {
     SerialBT.begin(conf.getValue("btname"));
     Serial.println("BT started");
   }
+  playMelody(melodySetupCompleted);
+
 }
 
 void loop() 

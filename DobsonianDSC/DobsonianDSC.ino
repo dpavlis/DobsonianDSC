@@ -51,35 +51,44 @@
 #include <ESP32Encoder.h>
 #include "WebConfig_DSC.h"
 #include "BluetoothSerial.h"
+#include "note_frequencies.h"
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-#define MAX_SRV_CLIENTS         3   // How many clients can connect simultaneously to the DSC.
+#define DEBUG_PROTOCOL //for priting debug messages when handling protocol
 
 // Choose which pins of the ESP32 to use for the Azimuth Encoder
 ESP32Encoder AZencoder;
 #define PIN_AZ_A 18 // Important: Not all encoders can be connected directly to the pins of the ESP32, read more about this in the project's github page
 #define PIN_AZ_B 19
 
+#define AZIMUTH_RES 1800 //ticks per rotation
+#define AZIMUTH_START 0 //starts at 0 - NORTH
+
 // Choose which pins of the ESP32 to use for the Altitude Encoder
 ESP32Encoder ALTencoder;
 #define PIN_ALT_A 25
 #define PIN_ALT_B 26
 
+#define ALTITUDE_RES 22140 //ticks per rotation
+#define ALTITUDE_START 5624  //starts at 5624  - 90+ degrees (parked)
+
+#define AP_WIFI_NETWORK "TelescopeGSO_DSC"
+
+#define MAX_SRV_CLIENTS  3   // How many clients can connect simultaneously to the DSC.
+#define MAX_REQUEST_LENGTH 30 // Maximum length of request from client to process 
+
 //beeper for signalling
 #define PIN_BEEPER 33
-#define NOTE_C 261
-#define NOTE_D 293
-#define NOTE_E 329
-#define NOTE_F 349
-#define NOTE_G 392
-#define NOTE_A 440
-#define NOTE_B 493
+//count-reset button
+#define PIN_RESET 34
+#define RESTART_HOLD_TIME 3000 // 3s - 3000ms
+#define PIN_RESET_WAIT_TIME 50
 
-const int melodyStart[] = {NOTE_C, NOTE_E, NOTE_G};
-const int melodyError[] = {NOTE_A, NOTE_A, NOTE_A, NOTE_C};
-const int melodySetupCompleted[] = {NOTE_C, NOTE_C, NOTE_A, NOTE_A};
+unsigned int melodyStart[] = {NOTE_C, NOTE_E, NOTE_G, NOTE_0, NOTE_C, NOTE_E, NOTE_G, NOTE_FINISH};
+unsigned int melodyError[] = {NOTE_C, NOTE_C, NOTE_G, NOTE_G, NOTE_C, NOTE_C, NOTE_G, NOTE_G, NOTE_FINISH};
+unsigned int melodySetupCompleted[] = {NOTE_C, NOTE_0, NOTE_C, NOTE_0, NOTE_C, NOTE_0, NOTE_G, NOTE_G, NOTE_G, NOTE_G, NOTE_FINISH};
 
 BluetoothSerial SerialBT;
 
@@ -107,14 +116,28 @@ String params = "["
                 "'label':'Azimuth Steps',"
                 "'type':" + String(INPUTNUMBER) + ","
                 "'min':1,'max':10000000,"
-                "'default':'10000'"
+                "'default':'" + AZIMUTH_RES + "'"
+                "},"
+                "{"
+                "'name':'azstart',"
+                "'label':'Azimuth Start Position',"
+                "'type':" + String(INPUTNUMBER) + ","
+                "'min':0,'max':10000000,"
+                "'default':'" + AZIMUTH_START + "'"
                 "},"
                 "{"
                 "'name':'alsteps',"
                 "'label':'Altitude Steps',"
                 "'type':" + String(INPUTNUMBER) + ","
                 "'min':1,'max':10000000,"
-                "'default':'10000'"
+                "'default':'"+ ALTITUDE_RES + "'"
+                "},"
+                "{"
+                "'name':'alstart',"
+                "'label':'Altitude Start Position',"
+                "'type':" + String(INPUTNUMBER) + ","
+                "'min':0,'max':10000000,"
+                "'default':'"+ ALTITUDE_START + "'"
                 "},"
                 "{"
                 "'name':'flpaz',"
@@ -183,7 +206,7 @@ boolean initWiFi() {
   }
   if (!connected) { // if unable to connect to an external WiFi, let's launch our own passwordless WiFi SSID:
     WiFi.mode(WIFI_AP);
-    WiFi.softAP("Telescope_DSC", "", 1);
+    WiFi.softAP(AP_WIFI_NETWORK, "", 1);
   }
   return connected;
 }
@@ -236,8 +259,52 @@ void setupEncoders()
   AZencoder.setFilter(0); // filters are only needed for cheap mechanical/switch encoders such as the Keyes KY-040, not by the 600p/s encoders
 
   // set starting count value after attaching
-  ALTencoder.clearCount();
+  ALTencoder.clearCount(); //reset counter
+  ALTencoder.setCount(conf.getInt("alstart")); //set starting point
   AZencoder.clearCount();
+  AZencoder.setCount(conf.getInt("azstart"));
+}
+
+void processBBoxCommand(char command,char details[], char response[]) 
+{
+   switch (command)
+        {
+          case 'Q':   // the Query command, sent by SkySafari and others as the "Basic Encoder protocol" to query for encoder values.
+            sprintf(response, "%lld\t%lld\t\n", AZencoder.getCount(), ALTencoder.getCount());
+            break;
+          case 'G': // G Command (Get Encoder Resolution) -- duplicate to 'H' ??
+            snprintf(response, 20, "%d-%d\n", conf.getInt("azsteps"), conf.getInt("alsteps"));
+            break;
+          case 'H':   // 'H' - request for encoder resolution, e.g. 10000-10000\n
+            //snprintf(response, 20, "%d-%d\n", conf.getInt("azsteps"), conf.getInt("alsteps"));
+            snprintf(response, 20, "%d\t%d\t\n", conf.getInt("azsteps"), conf.getInt("alsteps"));
+            break;
+          case 'Z': // 'Z' - Z Command (Reset Encoders)
+            ALTencoder.clearCount();
+            AZencoder.clearCount();
+            sprintf(response, "OK\n");
+            break;
+          case 'S': // 'S' S Command (Set Encoder Resolution) - S azimuth_resolution, altitude_resolution
+            //S azimuth_resolution, altitude_resolution
+            int altRes, azRes;
+            if (sscanf(details, "%d,%d", &azRes, &altRes) == 2) {
+              char strval[20];
+              itoa(azRes,strval,10);
+              conf.setValue("azsteps",strval);
+              itoa(altRes,strval,10);
+              conf.setValue("alsteps",strval);
+              sprintf(response, "OK\n");
+            }
+            break;
+          default: sprintf(response,"\n");
+            #ifdef DEBUG_PROTOCOL
+              Serial.print("*** UNKNOWN COMMAND ****");
+            #endif
+        }
+    #ifdef DEBUG_PROTOCOL
+    Serial.printf("[%c]{%s}(%s)\n",command,details,response);
+    #endif
+
 }
 
 void attendTcpRequests()  // handle connections from SkySafari and similar software via TCP on port 4030
@@ -253,6 +320,10 @@ void attendTcpRequests()  // handle connections from SkySafari and similar softw
         }
         serverClients[i] = TCPserver.available();
         // the new client has connected
+        #ifdef DEBUG_PROTOCOL
+          Serial.print("New client connected: ");
+          Serial.println(serverClients[i].remoteIP());
+        #endif
         break;
       }
     }
@@ -260,6 +331,9 @@ void attendTcpRequests()  // handle connections from SkySafari and similar softw
     if (i == MAX_SRV_CLIENTS) {
       WiFiClient serverClient = TCPserver.available();
       serverClient.stop();
+      #ifdef DEBUG_PROTOCOL
+          Serial.println("Client rejected. No more free spots.");
+      #endif
     }
   }
 
@@ -270,19 +344,24 @@ void attendTcpRequests()  // handle connections from SkySafari and similar softw
     {
       if (serverClients[i].available())
       {
-        char character = serverClients[i].read(); // read the first character received, usually the command
-        char response[30];
-        switch (character)
-        {
-          case 'Q':   // the Query command, sent by SkySafari and others as the "Basic Encoder protocol" to query for encoder values.
-            sprintf(response, "%lld\t%lld\t\n", AZencoder.getCount(), ALTencoder.getCount());
-            serverClients[i].println(response);
-            break;
-          case 'H':   // 'H' - request for encoder resolution, e.g. 10000-10000\n
-            snprintf(response, 20, "%u-%u", conf.getInt("azsteps"), conf.getInt("alsteps"));
-            serverClients[i].println(response);
-            break;
+        #ifdef DEBUG_PROTOCOL
+        Serial.printf("TCP [%s:%u]",serverClients[i].remoteIP().toString(),serverClients[i].remotePort());
+        #endif
+        char command = serverClients[i].read(); // read the first character received, usually the command
+        char requestDetails[MAX_REQUEST_LENGTH+1];
+        int count=0;
+        if (serverClients[i].available() && count < MAX_REQUEST_LENGTH){
+          requestDetails[count] = serverClients[i].read();
+          count++;
         }
+        requestDetails[count]='\0';
+        while (serverClients[i].available())
+        {
+            serverClients[i].read(); // flushing the remaining input buffer (if there are more chars than fit to request details)
+        }
+        char response[30];
+        processBBoxCommand(command,requestDetails,response);
+        serverClients[i].println(response);
       }
     }
   }
@@ -294,46 +373,56 @@ void attendBTRequests()   // handle connections from SkySafari and similar softw
     //WiFi.disconnect();
     //WiFi.mode(WIFI_OFF);
 
-    char character = SerialBT.read();
+    char command = SerialBT.read();
+    char requestDetails[MAX_REQUEST_LENGTH+1];
+    int count=0;
+    while (SerialBT.available() && count < MAX_REQUEST_LENGTH)
+    {
+      requestDetails[count] = SerialBT.read();
+      count++;
+    }
+    requestDetails[count]='\0';
     while (SerialBT.available())
     {
-      SerialBT.read();  // flushing the buffer was necessary with Skysafari 5 Plus because it sent an initial "long" command.
+      SerialBT.read();  // flushing the remaining input buffer (if there are more chars than fit to request details)
     }
+
+    #ifdef DEBUG_PROTOCOL
     Serial.print("BT: ");
-    Serial.println(character);
+    #endif
     char response[30];
-    switch (character)
-    {
-      case 'Q':   // the Query command, sent by SkySafari and others as the "Basic Encoder protocol" to query for encoder values.
-        sprintf(response, "%lld\t%lld\t\n", AZencoder.getCount(), ALTencoder.getCount());
-        Serial.print(response);
-        SerialBT.println(response);
-        break;
-      case 'H':   // 'H' - request for encoder resolution, e.g. 10000-10000\n
-        snprintf(response, 20, "%u-%u\n", conf.getInt("azsteps"), conf.getInt("alsteps"));
-        Serial.print(response);
-        SerialBT.println(response);
-        break;
-      default: SerialBT.print("\n");
-    }
+    processBBoxCommand(command,requestDetails,response);
+
+    #ifdef DEBUG_PROTOCOL
+    if (command=='?') printConfig();
+    #endif
+
+    SerialBT.println(response);
   }
 }
 
-void playMelody(const int melody[]){
-  for(int i=0; i<sizeof(melody); i++){
-     tone(PIN_BEEPER, melody[i], 250);
-  }
+void printConfig(){
+    for(int i=0; i<conf.getCount();i++){
+      SerialBT.print(conf.getName(i));
+      SerialBT.print(" : ");
+      SerialBT.println(conf.getValue(conf.getName(i).c_str()));
+    }
+}
 
+void playMelody(const unsigned int melody[]){
+   for(int i=0; melody[i]!=NOTE_FINISH; i++){
+     tone(PIN_BEEPER, melody[i], 300);
+   }
 }
 
 /**
  * Arduino main setup method
  */
 void setup() {
-  pinMode(PIN_BEEPER, OUTPUT);
   Serial.begin(115200);
   Serial.println(params);
   playMelody(melodyStart);
+  pinMode(PIN_RESET, INPUT_PULLDOWN);
 
   conf.setDescription(params);
   conf.readConfig();
@@ -362,6 +451,24 @@ void setup() {
 
 void loop() 
 {
+  if (digitalRead(PIN_RESET) == HIGH)
+  {
+    //reset counters - AZ - 0 ; ALT - 0
+    ALTencoder.clearCount(); 
+    AZencoder.clearCount();
+    Serial.println("ALT&AZ counters zeroed");
+    tone(PIN_BEEPER, NOTE_A2);
+    delay(300);
+    noTone(PIN_BEEPER);
+    delay(2000);
+    if (digitalRead(PIN_RESET) == HIGH)
+    {
+      Serial.println("Going to restart");
+      tone(PIN_BEEPER, NOTE_A);
+      delay(600);
+      ESP.restart();      
+    }
+  }
   server.handleClient();
   attendBTRequests();
   attendTcpRequests();

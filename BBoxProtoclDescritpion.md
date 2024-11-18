@@ -1,3 +1,75 @@
+# Known DSC Commands
+
+Thanks to https://github.com/synfinatic/teensy-dsc for following summary:
+
+### BBox/Sky Wizard CTI
+ 
+Command | Description | Example Input | Example Output | Notes
+--------|-------------|---------------|----------------|------
+Z# # | Set encoder resolution | R10000\<TAB\>-10000\<CR\> | * | RA/Az, Dec/Alt
+P | Status | P | 001 | Hard coded value to mean no errors, battery OK
+Q | Get encoder position | Q | +01234\<TAB\>-00045\<CR\> | 
+
+
+Notes:
+
+ * Each numerical value must be 6 characters.
+ * Unclear if both \<Tab\> and \<SP\> are allowed, but I think so.  Tabs are preferred?
+ 
+
+### Orion Intelliscope 
+ 
+Command | Description | Example Input | Example Output | Notes
+--------|-------------|---------------|----------------|------
+Q | Get encoder position | Q | +01234\<TAB\>-00045\<CR\> | 
+P | Status | P | P001 | Hard coded value to mean no errors, battery OK
+
+Notes:
+
+ * At startup, the Intelliscope sends it's version string: V1.14
+ * Each numerical value must be 6 characters.
+
+
+### NGC Max
+ 
+Command | Description | Example Input | Example Output | Notes
+--------|-------------|---------------|----------------|------
+Q | Get encoder position | Q | +01234\<TAB\>-00045 | Unlike Intelliscope, no \<CR\> at the end
+
+### Basic Encoder System????
+
+Command | Description | Example Input | Example Output | Notes
+--------|-------------|---------------|----------------|------
+v | Version | v | TeensyDSC v1.0\<CR\> |
+V | Version | V | TeensyDSC v1.0\<CR\> |
+R# # | Set encoder resolution | R10000 -10000\<CR\> | R | RA/Az, Dec/Alt
+H | Get encoder resolution | H | 10000 -10000\<CR\> | 
+r | Get encoder resolution | r | 10000 -10000\<CR\> |
+A | Check connection | A | Y |
+a | Check connection | a | Y |
+
+### Additional TeensyDSC Commands
+
+Command | Description | Example Input | Example Output | Notes
+--------|-------------|---------------|----------------|------
+? | CLI Help | ? | \<multiple lines...\> |
+
+### Ouranos / Sky Guider III
+
+Command | Description | Example Input | Example Output | Notes
+--------|-------------|---------------|----------------|------
+Q | Get encoder position | Q | +01234\<TAB\>-00045\<CR\> | Unsure about Tab/CR
+R# # | Set encoder resolution | R10000 -10000 | R | RA/Az, Dec/Alt.  Unsure about Tab/CR 
+I# # | Set encoder position | I0 0 | R | Unsure about Tab/CR
+A | Set init flag | A | \<Unknown\> | No need to support
+a | Get init flag | a | \<Unknown\> | No need to support
+
+
+---
+
+Thanks to ChatGPT for following summary ;-)
+
+
 # BBox Protocol for Telescope Control
 
 The BBox protocol is a communication standard used by telescope control systems and digital setting circles (DSCs) to interface with astronomy software for precise control and tracking of celestial objects. It operates over a serial connection (often RS-232) and allows the software to receive and interpret data from encoders mounted on the telescope's axes. The protocol includes commands for querying and configuring the telescope's position, encoder settings, and other operational parameters.

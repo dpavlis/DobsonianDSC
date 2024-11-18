@@ -56,14 +56,14 @@
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-#define DEBUG_PROTOCOL //for priting debug messages when handling protocol
+//#define DEBUG_PROTOCOL //for priting debug messages when handling protocol
 
 // Choose which pins of the ESP32 to use for the Azimuth Encoder
 ESP32Encoder AZencoder;
 #define PIN_AZ_A 18 // Important: Not all encoders can be connected directly to the pins of the ESP32, read more about this in the project's github page
 #define PIN_AZ_B 19
 
-#define AZIMUTH_RES 1800 //ticks per rotation
+#define AZIMUTH_RES 7200 //600 pulses per revolution, programmed in quadrature for 600 x 4 = 2400 pulses, geared 1:3 = 7200
 #define AZIMUTH_START 0 //starts at 0 - NORTH
 
 // Choose which pins of the ESP32 to use for the Altitude Encoder
@@ -71,7 +71,7 @@ ESP32Encoder ALTencoder;
 #define PIN_ALT_A 25
 #define PIN_ALT_B 26
 
-#define ALTITUDE_RES 22140 //ticks per rotation
+#define ALTITUDE_RES 22140 //ticks per rotation : 600 x 4 = 2400 pulses, geared ??
 #define ALTITUDE_START 5624  //starts at 5624  - 90+ degrees (parked)
 
 #define AP_WIFI_NETWORK "TelescopeGSO_DSC"
@@ -80,9 +80,9 @@ ESP32Encoder ALTencoder;
 #define MAX_REQUEST_LENGTH 30 // Maximum length of request from client to process 
 
 //beeper for signalling
-#define PIN_BEEPER 33
+#define PIN_BEEPER 32
 //count-reset button
-#define PIN_RESET 34
+#define PIN_RESET 33
 #define RESTART_HOLD_TIME 3000 // 3s - 3000ms
 #define PIN_RESET_WAIT_TIME 50
 

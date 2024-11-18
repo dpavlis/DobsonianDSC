@@ -1,7 +1,11 @@
 # DobsonianDSC
-[[English]](https://github.com/vlaate/DobsonianDSC)
-[[Español]](https://github.com/vlaate/DobsonianDSC/blob/master/README.es.md)
 
+---
+### High-light of changes implemented compared to original
+* Support for buzzer to indicate the system is up and additional signals
+* Support for reset-switch to reset counters of encoders and reset the whole system (if long-pressed)
+* Configuration extended to enable setting starting points of encoder counters (to allow setting different than 0 count - for example, if the default position of the scope is towards Zenith)
+---
 Amateur astronomers want to know where their telescope is pointing at. For this reason, many commercial telescopes (like the Orion IntelliScope) come equipped with "push to" features, often based on high precision optical rotary encoders attached to the telescope mount, and a hand control device with a database of coordinates of thousands of stars and other sky objects.
 
 There are also commercial Digital Setting Circles, which are kits sold for telescope owners to adapt to their existing telescope, in order to give it "push to" features, costing a few hundred dollars.

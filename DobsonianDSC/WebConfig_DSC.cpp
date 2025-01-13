@@ -45,7 +45,7 @@ const char HTML_START[] PROGMEM =
 "<head>\n"
 "<meta http-equiv='Content-Type' content='text/html; charset=utf-8'>\n"
 "<meta name='viewport' content='width=320' />\n"
-"<title>Telescope-DSC</title>\n"
+"<title>ExploreScientific-DSC</title>\n"
 "<style>\n"
 "body {\n"
 "  background-color: #000000;\n"
@@ -89,7 +89,7 @@ const char HTML_START[] PROGMEM =
 "<body>\n"
 "<svg style=\"fill: red; width: 50%; display: block; margin: auto;\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 180 156\"><path d=\"M0 80.2V78l6.6-2.8-3-7.2 7.4-3.2 3 7.4 21.4-8.8.8-5.8 87.6-36.2 1-5.8C143.4 7.8 162 0 163 0c7 0 17 16.8 17 30 0 4.4-1.4 6.6-3 7.2l-37 15.4-4.6-3.6-26 10.8-.2 4.4-7.4 3 2 5c3.6 1.4 5.6 3.2 7.2 6.8l35.2 75.6-3.2 1.4-37.2-65-3.2 53h-3.2l-3.6-53L59 156l-3.2-1.4 36.4-78.8-1.4-4-7.4 3.2-3.4-3-32.4 13.4L43 82l-19.4 8zM162 9c0 9.4 7.8 23.8 12.4 23.8 1.2 0 2.4-1.2 2.4-4.8 0-8-7.6-23.2-12.4-23.2-1.4 0-2.4 1-2.4 4.2z\"/></svg>\n"
 "<div id='main_div' style='margin-left:15px;margin-right:15px;'>\n"
-"<div class='titel'>Telescope DSC</div>\n"
+"<div class='titel'>ExploreScientific DSC</div>\n"
 "<form method='post'>\n";
 
 //Template for one input field

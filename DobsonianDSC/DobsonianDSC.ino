@@ -63,7 +63,7 @@ ESP32Encoder AZencoder;
 #define PIN_AZ_A 18 // Important: Not all encoders can be connected directly to the pins of the ESP32, read more about this in the project's github page
 #define PIN_AZ_B 19
 
-#define AZIMUTH_RES 7200 //600 pulses per revolution, programmed in quadrature for 600 x 4 = 2400 pulses, geared 1:3 = 7200
+#define AZIMUTH_RES 12000 //1000 pulses per revolution, programmed in quadrature for 1000 x 4 = 4000 pulses, geared 1:3 = 12000
 #define AZIMUTH_START 0 //starts at 0 - NORTH
 
 // Choose which pins of the ESP32 to use for the Altitude Encoder
@@ -71,10 +71,10 @@ ESP32Encoder ALTencoder;
 #define PIN_ALT_A 25
 #define PIN_ALT_B 26
 
-#define ALTITUDE_RES 22140 //ticks per rotation : 600 x 4 = 2400 pulses, geared ??
+#define ALTITUDE_RES 22140 //ticks per rotation : 1000 x 4 = 4000 pulses, geared ??
 #define ALTITUDE_START 5624  //starts at 5624  - 90+ degrees (parked)
 
-#define AP_WIFI_NETWORK "TelescopeGSO_DSC"
+#define AP_WIFI_NETWORK "ExploreScientific_DSC"
 
 #define MAX_SRV_CLIENTS  3   // How many clients can connect simultaneously to the DSC.
 #define MAX_REQUEST_LENGTH 30 // Maximum length of request from client to process 
@@ -295,6 +295,11 @@ void processBBoxCommand(char command,char details[], char response[])
               conf.setValue("alsteps",strval);
               sprintf(response, "OK\n");
             }
+            break;
+          case 'R': // Not A BBox command - reset counters (for debugging mostly)
+            ALTencoder.clearCount(); 
+            AZencoder.clearCount();
+            sprintf(response, "OK\n");
             break;
           default: sprintf(response,"\n");
             #ifdef DEBUG_PROTOCOL
